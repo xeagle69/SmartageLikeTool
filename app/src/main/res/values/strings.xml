@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">SmartageLikeTool</string>
+
+
+    <string name="post_one_link">https://www.instagram.com/p/CGKGOZ3Je8g/</string>
+    <string name="post_two_link">https://www.instagram.com/p/CGKGS-iJT4G/</string>
+    <string name="post_three_link">https://www.instagram.com/p/CGKGUNzpXpV/</string>
+    <string name="post_four_link">https://www.instagram.com/p/CGKGVuPpeg4/</string>
+
+
+
+    <string name="like_one_url">https://www.instagram.com/web/likes/2416771528158211872/like/</string>
+    <string name="like_two_url">https://www.instagram.com/web/likes/2416771842412199430/like/</string>
+    <string name="like_three_url">https://www.instagram.com/web/likes/2416771927531420245/like/</string>
+    <string name="like_four_url">https://www.instagram.com/web/likes/2416772031080425528/like/</string>
+
+
+</resources>
