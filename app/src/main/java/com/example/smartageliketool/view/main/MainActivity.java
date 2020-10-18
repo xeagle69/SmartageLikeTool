@@ -10,20 +10,28 @@ import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
+import android.webkit.CookieManager;
+import android.webkit.ValueCallback;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.example.smartageliketool.BaseActivity;
 import com.example.smartageliketool.BaseApplication;
 import com.example.smartageliketool.R;
+import com.example.smartageliketool.data.model.UserAccountStatus;
 import com.example.smartageliketool.data.model.cookie.GetCookieResponse;
 import com.example.smartageliketool.data.model.instapost.InstaPostResponse;
 import com.example.smartageliketool.data.model.post.PostDataBaseEntity;
@@ -58,8 +66,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     private PrefManager prefManager;
     private SharedPreferences prefs;
     private String currentIpAddress;
-
-
+    private UserAccountStatus user_status;
     private Boolean shouldGetCookie;
     private Boolean shouldGetPosts;
     private Boolean shouldOpenWebView;
@@ -69,6 +76,10 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     private Integer postCurrentIndex;
     private List<PostDataBaseEntity> postDataBaseEntityList;
     private Map<String, String> headerMap;
+
+    private Boolean isPostLikeStarted = false;
+    private Boolean isPostLikeChecked = false;
+    private Boolean isFromWebView = false;
 
 
     //**********************************************************************************************
@@ -109,6 +120,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
             String ip = getMobileIPAddress(true);
             currentIpAddress = ip;
             txtActivityLabel.setText("IP : " + ip);
+            user_status = UserAccountStatus.OK;
             presenter.getToken("super-admin", "a8k9p763gYv2RBq");
         } else {
             Toast.makeText(MainActivity.this, "it is NOT Root !!!", Toast.LENGTH_LONG).show();
@@ -190,27 +202,67 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     public void validPost(int postId, int actualPostId, String url, Map<String, String> headers, InstaPostResponse instaPostResponse) {
         Log.d(TAG, "Post " + postId + "-" + actualPostId + " is valid ");
         DatabaseModule dataBase = DatabaseModule.getInstance(MainActivity.this);
-        if (instaPostResponse.getGraphql().getShortcodeMedia().getViewerHasLiked()) {
-            dataBase.postTableDao().setLikeStatusForPostLikedViaCookie(true, actualPostId);
-        } else {
-            dataBase.postTableDao().setLikeStatusForPostLikedViaCookie(false, actualPostId);
-        }
-        postCurrentIndex++;
-        if (postCurrentIndex < postTotalCount) {
-            presenter.testPost(postCurrentIndex, postDataBaseEntityList.get(postCurrentIndex).getActualId(), postDataBaseEntityList.get(postCurrentIndex).getLink(), headerMap);
-        } else {
-            Log.d(TAG, "Testing Posts Completed");
-            Log.d(TAG, "PostCurrentIndex has been reset to default 0");
-            postDataBaseEntityList = new ArrayList<>();
-            postCurrentIndex = 0;
-            postDataBaseEntityList = dataBase.postTableDao().getAllPostsFromDataBaseThatIsUnlikeByTwoFactors(false, false);
-            postTotalCount = postDataBaseEntityList.size();
-            //it is ready for like process
-            shouldGetPosts = false;
-            likeMainFunction();
 
 
+        if (isFromWebView) {
+            isFromWebView = false;
+
+            if (instaPostResponse.getGraphql().getShortcodeMedia().getViewerHasLiked()) {
+                isPostLikeChecked = false;
+                isPostLikeStarted = false;
+
+                Log.d(TAG, "likeMainFunction - shouldOpenWebView - like post is ok ");
+                postCurrentIndex++;
+                if (cookieLikeCount == 10) {
+                    cookieLikeCount = 0;
+                    shouldGetCookie = true;
+                } else {
+                    shouldGetCookie = false;
+                }
+                if (postCurrentIndex < postTotalCount - 1) {
+                    shouldGetPosts = false;
+                } else {
+                    shouldGetPosts = true;
+                }
+
+                //remove from database
+                dataBase.postTableDao().deletePostByActualId(postDataBaseEntityList.get(postCurrentIndex - 1).getActualId());
+                //remove from list
+                postDataBaseEntityList.remove(postCurrentIndex - 1);
+                postTotalCount --;
+                postCurrentIndex -- ;
+                shouldOpenWebView = false;
+                likeMainFunction();
+
+            } else {
+                Log.d(TAG, "likeMainFunction - shouldOpenWebView - like post is failed ");
+            }
+
+
+        } else {
+            if (instaPostResponse.getGraphql().getShortcodeMedia().getViewerHasLiked()) {
+                dataBase.postTableDao().setLikeStatusForPostLikedViaCookie(true, actualPostId);
+            } else {
+                dataBase.postTableDao().setLikeStatusForPostLikedViaCookie(false, actualPostId);
+            }
+            postCurrentIndex++;
+            if (postCurrentIndex < postTotalCount) {
+                presenter.testPost(postCurrentIndex, postDataBaseEntityList.get(postCurrentIndex).getActualId(), postDataBaseEntityList.get(postCurrentIndex).getLink(), headerMap);
+            } else {
+                Log.d(TAG, "Testing Posts Completed");
+                Log.d(TAG, "PostCurrentIndex has been reset to default 0");
+                postDataBaseEntityList = new ArrayList<>();
+                postCurrentIndex = 0;
+                postDataBaseEntityList = dataBase.postTableDao().getAllPostsFromDataBaseThatIsUnlikeByTwoFactors(false, false);
+                postTotalCount = postDataBaseEntityList.size();
+                //it is ready for like process
+                shouldGetPosts = false;
+                likeMainFunction();
+
+
+            }
         }
+
 
     }
 
@@ -310,6 +362,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
             postDataBaseEntityList = new ArrayList<>();
             postDataBaseEntityList = dataBase.postTableDao().getAllPostsFromDataBase();
             postTotalCount = postDataBaseEntityList.size();
+            Log.d(TAG, "getCookieSuccess - postTotalCount : "+postTotalCount);
             postCurrentIndex = 0;
             cookieLikeCount = 0;
 
@@ -352,6 +405,8 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         dataBase.postTableDao().deletePostByActualId(postDataBaseEntityList.get(postCurrentIndex - 1).getActualId());
         //remove from list
         postDataBaseEntityList.remove(postCurrentIndex - 1);
+        postTotalCount --;
+        postCurrentIndex -- ;
 
         likeMainFunction();
     }
@@ -374,36 +429,316 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         }
         //remove from list
         postDataBaseEntityList.remove(postCurrentIndex - 1);
+        postTotalCount --;
+        postCurrentIndex -- ;
         likeMainFunction();
     }
 
 
     @SuppressLint("LongLogTag")
-    @Override
-    public void openWebViewGetLikeHeaders(String link, Map<String, String> cookieHeader) {
-
-    }
-
-
     private void likeMainFunction() {
+        Log.d(TAG, "likeMainFunction");
         if (shouldGetPosts) {
+            Log.d(TAG, "likeMainFunction - shouldGetPosts");
             presenter.getPostList(prefManager.loadToken());
         } else if (shouldGetCookie) {
+            Log.d(TAG, "likeMainFunction - shouldGetCookie");
             presenter.getCookie(prefManager.loadToken());
         } else {
             if (shouldOpenWebView) {
+                Log.d(TAG, "likeMainFunction - shouldOpenWebView");
                 //load webView
-                //like via java script
-                //get 4 headers for like api
+                //****************************************************************************************************************************
+                if (webView != null) {
+                    webView.loadUrl(RemoteConstants.BLANK_LINK);
+                    webView.clearHistory();
+                    webView.clearCache(true);
+                    CookieManager.getInstance().removeAllCookies(null);
+                    CookieManager cookieMgr = CookieManager.getInstance();
+                    cookieMgr.removeAllCookies(null);
+                    webView.getSettings().setDomStorageEnabled(true);
+                    webView.getSettings().setLoadsImagesAutomatically(false);
+                    webView.getSettings().setJavaScriptEnabled(true);
+                    webView.setWebViewClient(new WebViewClient() {
+
+                        @RequiresApi(api = Build.VERSION_CODES.N)
+                        @Override
+                        public void onPageFinished(WebView view, String url) {
+                            Log.d(TAG, "likeMainFunction - shouldOpenWebView - onPageFinished - url >>>  " + url);
+                            clickCookie(webView);
+                            super.onPageFinished(view, url);
+                        }
+
+                        @RequiresApi(api = Build.VERSION_CODES.N)
+                        @Nullable
+                        @Override
+                        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                            if (request.getUrl().getPath() != null) {
+                                if (request.getUrl().getPath().contains("web/likes")) {
+                                    extractHeaderParams(request.getRequestHeaders());
+                                    isFromWebView = true;
+                                    presenter.testPost(postCurrentIndex, postDataBaseEntityList.get(postCurrentIndex).getActualId(), postDataBaseEntityList.get(postCurrentIndex).getLink(), headerMap);
+                                    webView.loadUrl(RemoteConstants.BLANK_LINK);
+
+
+                                }
+                            }
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (!isPostLikeChecked) {
+                                        webView.evaluateJavascript(RemoteConstants.IS_POST_AVALABLE_SCRIPT,
+                                                new ValueCallback<String>() {
+                                                    @Override
+                                                    public void onReceiveValue(String html) {
+
+                                                        if (html.contains("Save") && html.contains("Share Post") && html.contains("More options")) {
+                                                            isPostLikeStarted = true;
+                                                            isPostLikeChecked = true;
+                                                        }
+                                                    }
+                                                });
+                                    }
+                                }
+                            });
+                            if (isPostLikeStarted) {
+                                isPostLikeStarted = false;
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        likePost(webView);
+                                    }
+                                });
+                            }
+                            return super.shouldInterceptRequest(view, request);
+
+                        }
+
+                    });
+
+
+                    String[] cookiesList = headerMap.get("cookie").trim().split(RemoteConstants.SEMICOLON_PATTERN);
+                    for (String ccookie : cookiesList) {
+                        CookieManager.getInstance().setCookie(RemoteConstants.INSTAGRAM_HOME_PLUS, ccookie.trim());
+                    }
+
+                    webView.loadUrl(postDataBaseEntityList.get(postCurrentIndex).getLink());
+                }
+
+                //****************************************************************************************************************************
+
             } else {
+                Log.d(TAG, "likeMainFunction - likeViaApi");
                 //like via api
                 StringBuilder urlBuilder = new StringBuilder();
                 urlBuilder.append("https://www.instagram.com/web/likes/");
                 urlBuilder.append(postDataBaseEntityList.get(postCurrentIndex).getMediaId().trim());
                 urlBuilder.append("/like/");
+                headerMap.put("x-csrftoken", prefManager.loadCfrtoken());
+                headerMap.put("x-ig-app-id", prefManager.loadInstagramAppId());
+                headerMap.put("x-ig-www-claim", prefManager.loadIgClaim());
+                headerMap.put("x-instagram-ajax", prefManager.loadInstagramAjax());
+                headerMap.put("x-requested-with", "XMLHttpRequest");
                 presenter.like(urlBuilder.toString(), postCurrentIndex, 0, headerMap);
             }
         }
+    }
+
+
+    private void clickCookie(WebView webView) {
+        webView.evaluateJavascript(RemoteConstants.IS_POST_AVALABLE_SCRIPT,
+                new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String html) {
+                        webView.loadUrl(RemoteConstants.CLICK_COOKIE_SCRIPT);
+                    }
+                });
+    }
+
+    @SuppressLint("LongLogTag")
+    public void extractHeaderParams(Map<String, String> headerMap) {
+        for (Map.Entry<String, String> entry : headerMap.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase("x-ig-www-claim"))
+                if (entry.getValue() != null) {
+                    Log.d(TAG, "likeMainFunction - shouldOpenWebView - shouldInterceptRequest - x-ig-www-claim >>>  " + entry.getValue());
+                    prefManager.saveIgClaim(entry.getValue());
+                }
+            if (entry.getKey().equalsIgnoreCase("x-instagram-ajax"))
+                if (entry.getValue() != null) {
+                    Log.d(TAG, "likeMainFunction - shouldOpenWebView - shouldInterceptRequest - x-instagram-ajax >>>  " + entry.getValue());
+                    prefManager.saveInstagramAjax(entry.getValue());
+                }
+            if (entry.getKey().equalsIgnoreCase("x-csrftoken"))
+                if (entry.getValue() != null) {
+                    Log.d(TAG, "likeMainFunction - shouldOpenWebView - shouldInterceptRequest - x-csrftoken >>>  " + entry.getValue());
+                    prefManager.saveCfrtoken(entry.getValue());
+                }
+            if (entry.getKey().equalsIgnoreCase("x-ig-app-id"))
+                if (entry.getValue() != null) {
+                    Log.d(TAG, "likeMainFunction - shouldOpenWebView - shouldInterceptRequest - x-ig-app-id >>>  " + entry.getValue());
+                    prefManager.saveInstagramAppId(entry.getValue());
+                }
+
+        }
+    }
+
+    public void checkAccountStatus(WebView webView) {
+        webView.evaluateJavascript(RemoteConstants.CHECK_ACCOUNT_STATUS_SCRIPT,
+                new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String html) {
+                        if (user_status == UserAccountStatus.OK) {
+                            if (html.contains(RemoteConstants.LOCK_ACCOUNT)) {
+                                user_status = UserAccountStatus.PAUSED_BY_USER;
+                            } else if (html.contains(RemoteConstants.RESTRICTED_VIDEO_HINT)) {
+                                user_status = UserAccountStatus.RESTRICTED_VIDEO;
+                            } else if (html.contains(RemoteConstants.COMPRIMISED_HINT)) {
+                                user_status = UserAccountStatus.LOGGED_OUT;
+                            } else if (html.contains(RemoteConstants.UNUSUAL_HINT)) {
+                                user_status = UserAccountStatus.PAUSED_BY_USER;
+                            } else if (html.contains(RemoteConstants.ACCOUNT_OWN_HINT)) {
+                                user_status = UserAccountStatus.BAD_CODE;
+                            } else if (html.contains(RemoteConstants.INSTALL_APP_HINT)) {
+                                user_status = UserAccountStatus.PAUSED_BY_LOGIN_NEEDED;
+                            } else if (html.contains(RemoteConstants.SECURITY_CODE_HINT)) {
+                                user_status = UserAccountStatus.BAD_CODE;
+                            } else if (html.contains(RemoteConstants.ADD_PHONE_HINT)) {
+                                user_status = UserAccountStatus.PAUSED_BY_MOBILE_NEEDED;
+                            } else if (html.contains(RemoteConstants.TRY_AGAIN)) {
+                                user_status = UserAccountStatus.ACTION_BLOCKED;
+                            } else if (html.contains(RemoteConstants.EMAIL_NEEDED_HINT)) {
+                                user_status = UserAccountStatus.PAUSED_BY_CONFIRMATION_ALERT;
+                            } else if (html.contains(RemoteConstants.CONFIRM_PROFILE_HINT)) {
+                                webView.loadUrl(RemoteConstants.CONFIRM_PROFILE_SCRIPT);
+                            } else if (html.contains(RemoteConstants.THIS_WAS_ME_HINT)) {
+                                webView.loadUrl(RemoteConstants.THIS_WAS_ME_SCRIPT);
+                            } else if (html.contains(RemoteConstants.LOGIN_HINT)) {
+                                user_status = UserAccountStatus.PAUSED_BY_LOGIN_NEEDED;
+                            } else if (html.contains(RemoteConstants.LOGIN_PLUS_HINT)) {
+                                user_status = UserAccountStatus.PAUSED_BY_LOGIN_NEEDED;
+                            } else if (html.contains(RemoteConstants.SECURITY_CODE_PLUS_HINT)) {
+                                user_status = UserAccountStatus.BAD_CODE;
+                            }
+                        }
+                    }
+                });
+    }
+
+
+    private void handleActionBlock() {
+        webView.loadUrl("about:blank");
+        if (user_status == UserAccountStatus.RESTRICTED_VIDEO) {
+            // should deactive post
+            //get another cookie
+
+
+            postCurrentIndex++;
+            if (cookieLikeCount == 10) {
+                cookieLikeCount = 0;
+                shouldGetCookie = true;
+            } else {
+                shouldGetCookie = false;
+            }
+            if (postCurrentIndex < postTotalCount - 1) {
+                shouldGetPosts = false;
+            } else {
+                shouldGetPosts = true;
+            }
+
+            shouldGetCookie = true;
+
+            likeMainFunction();
+
+
+        } else {
+            if (user_status == UserAccountStatus.ACTION_BLOCKED) {
+                //get another cookie
+                postCurrentIndex++;
+                if (cookieLikeCount == 10) {
+                    cookieLikeCount = 0;
+                    shouldGetCookie = true;
+                } else {
+                    shouldGetCookie = false;
+                }
+                if (postCurrentIndex < postTotalCount - 1) {
+                    shouldGetPosts = false;
+                } else {
+                    shouldGetPosts = true;
+                }
+
+                shouldGetCookie = true;
+
+                likeMainFunction();
+
+
+            } else if (user_status == UserAccountStatus.PAUSED_BY_LOGIN_NEEDED) {
+                //get another cookie
+
+
+                postCurrentIndex++;
+                if (cookieLikeCount == 10) {
+                    cookieLikeCount = 0;
+                    shouldGetCookie = true;
+                } else {
+                    shouldGetCookie = false;
+                }
+                if (postCurrentIndex < postTotalCount - 1) {
+                    shouldGetPosts = false;
+                } else {
+                    shouldGetPosts = true;
+                }
+
+                shouldGetCookie = true;
+
+                likeMainFunction();
+            } else {
+                // should deactive post
+                //get another cookie
+
+                postCurrentIndex++;
+                if (cookieLikeCount == 10) {
+                    cookieLikeCount = 0;
+                    shouldGetCookie = true;
+                } else {
+                    shouldGetCookie = false;
+                }
+                if (postCurrentIndex < postTotalCount - 1) {
+                    shouldGetPosts = false;
+                } else {
+                    shouldGetPosts = true;
+                }
+
+                shouldGetCookie = true;
+
+                likeMainFunction();
+            }
+        }
+
+    }
+
+
+    @SuppressLint("LongLogTag")
+    private void likePost(WebView webView) {
+        Log.d(TAG, "likeMainFunction - shouldOpenWebView - onPageFinished - likePost ");
+        checkAccountStatus(webView);
+        webView.scrollTo(0, 1000);
+        webView.evaluateJavascript("(function(){return window.document.body.outerHTML})();",
+                new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String html) {
+                        if (user_status == UserAccountStatus.OK && html.contains("Like")) {
+                            final Handler sendText = new Handler();
+                            sendText.postDelayed(new Runnable() {
+                                @RequiresApi(api = Build.VERSION_CODES.N)
+                                @Override
+                                public void run() {
+                                    webView.loadUrl("javascript:(function() { " +
+                                            "document.querySelector('[aria-label=\"Like\"]').parentElement.click()})()");
+                                }
+                            }, 1000);
+                        }
+                    }
+                });
     }
 
 

@@ -44,7 +44,7 @@ public class DataRepositoryImpl implements DataRepository {
 
     @Override
     public Single<InstaPostResponse> testPost(int postId, int actualPostId, String url, Map<String, String> headers) {
-        return null;
+        return apiManager.testPost(url,headers);
     }
 
 
@@ -55,7 +55,7 @@ public class DataRepositoryImpl implements DataRepository {
 
     @Override
     public Single<ResponseBody> deActivePost(int postId, int actualPostId, String token, String url) {
-        return null;
+        return apiManager.deActivePost(token,url);
     }
 
 

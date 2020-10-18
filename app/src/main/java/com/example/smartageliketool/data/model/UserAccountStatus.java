@@ -1,0 +1,18 @@
+package com.example.smartageliketool.data.model;
+
+public enum UserAccountStatus {
+    OK,
+    PAUSED_BY_USER,
+    BANNED_BY_INSTAGRAM,
+    PAUSED_BY_VERIFICATION_CODE,
+    PAUSED_BY_CONFIRMATION_ALERT,
+    PAUSED_BY_BAD_PASSWORD,
+    LOGGED_OUT,
+    TRIAL_EXPIRED,
+    BANNED_BY_OTHER_RESULT,
+    BAD_CODE,
+    PAUSED_BY_MOBILE_NEEDED,
+    PAUSED_BY_LOGIN_NEEDED,
+    ACTION_BLOCKED,
+    RESTRICTED_VIDEO
+}

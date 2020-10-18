@@ -39,7 +39,6 @@ public interface MainContract {
 
         void likeApiProcessIsFailed(int postIndex, int cookieIndex, Throwable error);
 
-        void openWebViewGetLikeHeaders(String link, Map<String, String> cookieHeader);
 
         void changeIp();
 

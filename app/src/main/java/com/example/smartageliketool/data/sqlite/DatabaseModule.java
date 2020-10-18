@@ -20,6 +20,7 @@ public abstract class DatabaseModule extends RoomDatabase {
         if (instance==null){
             instance = Room.databaseBuilder(context.getApplicationContext(),DatabaseModule.class,DB_NAME)
                     .fallbackToDestructiveMigration()
+                    .allowMainThreadQueries()
                     .build();
         }
         return instance;

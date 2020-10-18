@@ -70,20 +70,21 @@ public class MainPresenter implements MainContract.Presenter {
     }
 
 
-
     @Override
     public void testPost(int postId, int actualPostId, String url, Map<String, String> headers) {
-        compositeDisposable.add(repository.testPost(postId, actualPostId, url, headers)
+        String completeUrl = url+"?__a=1";
+
+
+        compositeDisposable.add(repository.testPost(postId, actualPostId, completeUrl, headers)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(InstaPostResponse -> view.validPost(postId, actualPostId, url, headers,InstaPostResponse), error -> view.inValidPost(postId, actualPostId, url, headers, error)
+                .subscribe(InstaPostResponse -> view.validPost(postId, actualPostId, url, headers, InstaPostResponse), error -> view.inValidPost(postId, actualPostId, url, headers, error)
                 ));
     }
 
 
     @Override
     public void like(String url, int postIndex, int cookieIndex, Map<String, String> headerCookies) {
-        //todo deal with action block here !!!
         compositeDisposable.add(repository.like(url, headerCookies)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
