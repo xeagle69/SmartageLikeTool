@@ -6,11 +6,15 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
+import com.example.smartageliketool.data.model.ignoreTable.IgnoreTable;
+import com.example.smartageliketool.data.model.ignoreTable.IgnoreTableDao;
+import com.example.smartageliketool.data.model.likeTable.LikeTable;
+import com.example.smartageliketool.data.model.likeTable.LikeTableDao;
 import com.example.smartageliketool.data.model.post.PostDataBaseEntity;
 import com.example.smartageliketool.data.model.post.PostTableDao;
 
 
-@Database(entities = PostDataBaseEntity.class,exportSchema = false,version = 1)
+@Database(entities = {PostDataBaseEntity.class, LikeTable.class, IgnoreTable.class} ,exportSchema = false,version = 1)
 public abstract class DatabaseModule extends RoomDatabase {
 
     private static final String DB_NAME = "like_tool_db";
@@ -27,4 +31,6 @@ public abstract class DatabaseModule extends RoomDatabase {
     }
 
     public abstract PostTableDao postTableDao();
+    public abstract IgnoreTableDao ignoreTableDao();
+    public abstract LikeTableDao likeTableDao();
 }

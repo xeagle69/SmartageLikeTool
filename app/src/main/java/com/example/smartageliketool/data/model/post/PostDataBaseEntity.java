@@ -23,31 +23,25 @@ public class PostDataBaseEntity {
     @ColumnInfo(name = "mediaId")
     private String mediaId;
 
+    @Ignore
+    public PostDataBaseEntity() {
+    }
 
-    @ColumnInfo(name = "is_liked")
-    private boolean isLike;
-
-
-    @ColumnInfo(name = "is_liked_with_cookie")
-    private boolean isLikeWithCoockie;
-
-
-    public PostDataBaseEntity(int id, int actualId, String link, String mediaId, boolean isLike, boolean isLikeWithCoockie) {
+    public PostDataBaseEntity(int id, int actualId, String link, String mediaId) {
         this.id = id;
         this.actualId = actualId;
         this.link = link;
         this.mediaId = mediaId;
-        this.isLike = isLike;
-        this.isLikeWithCoockie = isLikeWithCoockie;
+
+
     }
 
     @Ignore
-    public PostDataBaseEntity(int actualId, String link,String mediaId, boolean isLike, boolean isLikeWithCoockie) {
+    public PostDataBaseEntity(int actualId, String link, String mediaId) {
         this.actualId = actualId;
         this.link = link;
         this.mediaId = mediaId;
-        this.isLike = isLike;
-        this.isLikeWithCoockie = isLikeWithCoockie;
+
 
     }
 
@@ -60,13 +54,6 @@ public class PostDataBaseEntity {
         this.mediaId = mediaId;
     }
 
-    public boolean isLikeWithCoockie() {
-        return isLikeWithCoockie;
-    }
-
-    public void setLikeWithCoockie(boolean likeWithCoockie) {
-        isLikeWithCoockie = likeWithCoockie;
-    }
 
     public int getId() {
         return id;
@@ -92,11 +79,5 @@ public class PostDataBaseEntity {
         this.link = link;
     }
 
-    public boolean isLike() {
-        return isLike;
-    }
 
-    public void setLike(boolean like) {
-        isLike = like;
-    }
 }

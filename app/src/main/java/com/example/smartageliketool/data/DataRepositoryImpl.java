@@ -9,6 +9,7 @@ import com.example.smartageliketool.data.model.like.LikeResponseDto;
 import com.example.smartageliketool.data.model.postList.PostEntity;
 import com.example.smartageliketool.data.model.token.TokenDto;
 import com.example.smartageliketool.data.model.token.TokenResponseDto;
+import com.example.smartageliketool.data.model.updateCookie.UpdateCookieDto;
 import com.example.smartageliketool.data.remote.ApiManager;
 import com.example.smartageliketool.di.scope.PerActivity;
 
@@ -43,7 +44,7 @@ public class DataRepositoryImpl implements DataRepository {
     }
 
     @Override
-    public Single<InstaPostResponse> testPost(int postId, int actualPostId, String url, Map<String, String> headers) {
+    public Single<InstaPostResponse> testPost(String url, Map<String, String> headers) {
         return apiManager.testPost(url,headers);
     }
 
@@ -54,7 +55,7 @@ public class DataRepositoryImpl implements DataRepository {
     }
 
     @Override
-    public Single<ResponseBody> deActivePost(int postId, int actualPostId, String token, String url) {
+    public Single<ResponseBody> deActivePost(String token, String url) {
         return apiManager.deActivePost(token,url);
     }
 
@@ -62,6 +63,11 @@ public class DataRepositoryImpl implements DataRepository {
     @Override
     public Single<GetCookieResponse> getCookie(String token) {
         return apiManager.getCookie(token);
+    }
+
+    @Override
+    public Single<GetCookieResponse> updateCookie(String url, String token, UpdateCookieDto updateCookieDto) {
+        return apiManager.updateCookie(url,token,updateCookieDto);
     }
 
 

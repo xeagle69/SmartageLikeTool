@@ -2,6 +2,9 @@ package com.example.smartageliketool.view.main;
 
 
 import com.example.smartageliketool.data.DataRepository;
+import com.example.smartageliketool.data.model.like.LikeResponseDto;
+import com.example.smartageliketool.data.model.post.PostDataBaseEntity;
+import com.example.smartageliketool.data.model.updateCookie.UpdateCookieDto;
 import com.example.smartageliketool.di.scope.PerActivity;
 
 import java.util.Map;
@@ -52,11 +55,20 @@ public class MainPresenter implements MainContract.Presenter {
     }
 
     @Override
-    public void deActivePost(int postId, int actualPostId, String token, String url) {
-        compositeDisposable.add(repository.deActivePost(postId, actualPostId, token, url)
+    public void getPostListFromBetween(String token) {
+        compositeDisposable.add(repository.getPostList(token)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(ResponseBody -> view.deActivePostSuccess(postId, actualPostId), error -> view.deActivePostFailed(postId, actualPostId, error)
+                .subscribe(postEntities -> view.postListReceivedSuccessBetween(postEntities), error -> view.postListFailedBetween(error)
+                ));
+    }
+
+    @Override
+    public void deActivePost(PostDataBaseEntity post, String token, String url) {
+        compositeDisposable.add(repository.deActivePost(token, url)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(ResponseBody -> view.deActivePostSuccess(post), error -> view.deActivePostFailed(post, error)
                 ));
     }
 
@@ -69,26 +81,54 @@ public class MainPresenter implements MainContract.Presenter {
                 ));
     }
 
-
     @Override
-    public void testPost(int postId, int actualPostId, String url, Map<String, String> headers) {
-        String completeUrl = url+"?__a=1";
-
-
-        compositeDisposable.add(repository.testPost(postId, actualPostId, completeUrl, headers)
+    public void updateCookie(String url, String token, UpdateCookieDto updateCookieDto) {
+        compositeDisposable.add(repository.updateCookie(url,token,updateCookieDto)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(InstaPostResponse -> view.validPost(postId, actualPostId, url, headers, InstaPostResponse), error -> view.inValidPost(postId, actualPostId, url, headers, error)
+                .subscribe(GetCookieResponse -> view.updateCookieSuccess(url,updateCookieDto), error -> view.updateCookieFailed(error)
                 ));
     }
 
 
     @Override
-    public void like(String url, int postIndex, int cookieIndex, Map<String, String> headerCookies) {
+    public void testPostValidity(PostDataBaseEntity postDataBaseEntity, String url, Map<String, String> headers) {
+        String completeUrl = url + "?__a=1";
+        compositeDisposable.add(repository.testPost(completeUrl, headers)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(InstaPostResponse -> view.validPost(postDataBaseEntity, InstaPostResponse), error -> view.inValidPost(postDataBaseEntity, error)
+                ));
+    }
+
+    @Override
+    public void testPostforWebView(PostDataBaseEntity postDataBaseEntity, String url, Map<String, String> headers) {
+        String completeUrl = url + "?__a=1";
+        compositeDisposable.add(repository.testPost(completeUrl, headers)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(InstaPostResponse -> view.checkForWebView(postDataBaseEntity, InstaPostResponse), error -> view.postForWebViewError(postDataBaseEntity, error)
+                ));
+    }
+
+    @Override
+    public void testPostforLikedByMe(PostDataBaseEntity postDataBaseEntity, String url, Map<String, String> headers) {
+        String completeUrl = url + "?__a=1";
+
+
+        compositeDisposable.add(repository.testPost(completeUrl, headers)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(InstaPostResponse -> view.checkForLikedByMe(postDataBaseEntity, InstaPostResponse), error -> view.postForLikedByMeError(postDataBaseEntity, error)
+                ));
+    }
+
+    @Override
+    public void like(PostDataBaseEntity post, String url, Map<String, String> headerCookies) {
         compositeDisposable.add(repository.like(url, headerCookies)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(LikeResponse -> view.likeApiProcessIsSuccess(postIndex, cookieIndex), error -> view.likeApiProcessIsFailed(postIndex, cookieIndex, error)
+                .subscribe(LikeResponsDto -> view.likeApiProcessIsSuccess(LikeResponsDto,post), error -> view.likeApiProcessIsFailed(post, error)
                 ));
 
     }

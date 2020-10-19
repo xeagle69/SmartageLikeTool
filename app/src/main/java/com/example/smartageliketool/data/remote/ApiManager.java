@@ -1,13 +1,13 @@
 package com.example.smartageliketool.data.remote;
 
 
-
 import com.example.smartageliketool.data.model.cookie.GetCookieResponse;
 import com.example.smartageliketool.data.model.instapost.InstaPostResponse;
 import com.example.smartageliketool.data.model.like.LikeResponseDto;
 import com.example.smartageliketool.data.model.postList.PostEntity;
 import com.example.smartageliketool.data.model.token.TokenDto;
 import com.example.smartageliketool.data.model.token.TokenResponseDto;
+import com.example.smartageliketool.data.model.updateCookie.UpdateCookieDto;
 
 import java.util.List;
 import java.util.Map;
@@ -43,6 +43,10 @@ public class ApiManager {
 
     public Single<GetCookieResponse> getCookie(String token) {
         return apiService.getCookie(token);
+    }
+
+    public Single<GetCookieResponse> updateCookie(String url, String token, UpdateCookieDto updateCookieDto) {
+        return apiService.updateCookie(url, token, updateCookieDto);
     }
 
     public Single<InstaPostResponse> testPost(String url, Map<String, String> headers) {

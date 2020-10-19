@@ -9,6 +9,7 @@ import com.example.smartageliketool.data.model.like.LikeResponseDto;
 import com.example.smartageliketool.data.model.postList.PostEntity;
 import com.example.smartageliketool.data.model.token.TokenDto;
 import com.example.smartageliketool.data.model.token.TokenResponseDto;
+import com.example.smartageliketool.data.model.updateCookie.UpdateCookieDto;
 import com.example.smartageliketool.data.util.RemoteConstants;
 
 import java.util.List;
@@ -40,6 +41,11 @@ public interface NetworkApiService {
 
     @GET(RemoteConstants.GET_COOKIE)
     Single<GetCookieResponse> getCookie(@Header("Authorization") String token);
+
+
+    @HTTP(method = "PUT", hasBody = true)
+    Single<GetCookieResponse> updateCookie(@Url String url,@Header("Authorization") String token, @Body UpdateCookieDto updateCookieDto);
+
 
 
     @GET

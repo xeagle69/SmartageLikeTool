@@ -14,23 +14,22 @@ public interface PostTableDao {
     @Query("Select * from post_table")
     List<PostDataBaseEntity> getAllPostsFromDataBase();
 
-    @Query("Select * from post_table WHERE is_liked = :isLike AND is_liked_with_cookie =:isLikeByHeader")
-    List<PostDataBaseEntity> getAllPostsFromDataBaseThatIsUnlikeByTwoFactors(boolean isLike, boolean isLikeByHeader);
+    @Query("Select DISTINCT mediaId from post_table")
+    List<String> getDistinctPost();
 
 
     @Query("SELECT COUNT(*) FROM post_table")
     int getPostTableSize();
 
 
-    @Query("UPDATE post_table SET is_liked=:isLike WHERE actual_id = :actualId")
-    void setLikeStatusForPost(boolean isLike, int actualId);
+    @Query("DELETE from post_table WHERE id = :postId")
+    void deletePostById(int postId);
 
+    @Query("Select * from post_table WHERE mediaId = :mediaId")
+    List<PostDataBaseEntity> getPostByMediaId(String mediaId);
 
-    @Query("UPDATE post_table SET is_liked_with_cookie=:isLikeWithCookie WHERE actual_id = :actualId")
-    void setLikeStatusForPostLikedViaCookie(boolean isLikeWithCookie, int actualId);
-
-    @Query("DELETE from post_table WHERE actual_id = :actualId")
-    void deletePostByActualId(int actualId);
+    @Query("Select * from post_table WHERE id = :id")
+    List<PostDataBaseEntity> getPostById(int id);
 
 
     @Insert
