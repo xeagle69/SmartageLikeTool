@@ -101,8 +101,8 @@ public class RemoteConstants {
     public static final String IS_POST_AVALABLE_HINT = "The link you followed may be";
     public static final String IS_ACCOUNT_PRIVATE_HINT = "This Account is Private";
     public static final String THIS_WAS_ME_HINT = "This was me";
-    public static final String LOGIN_HINT = "Log in to like";
-    public static final String LOGIN_PLUS_HINT = "Sign up with email";
+    public static final String LOGIN_HINT = "Log In";
+    public static final String SIGN_PLUS_HINT = "Sign up with email";
     public static final String COOKIE_ACCEPT_HINT = "We use cookies to help personalize";
     public static final String PERSONALIZE_CONTENT = "To help personalize content";
     public static final String SUPPORT_LINK = "https://t.me/hyperlike_support";
