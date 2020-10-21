@@ -1,6 +1,8 @@
 package com.example.smartageliketool.view.main;
 
 
+import android.util.Log;
+
 import com.example.smartageliketool.data.DataRepository;
 import com.example.smartageliketool.data.model.like.LikeResponseDto;
 import com.example.smartageliketool.data.model.post.PostDataBaseEntity;
@@ -14,6 +16,8 @@ import javax.inject.Inject;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.schedulers.Schedulers;
+
+import static android.content.ContentValues.TAG;
 
 @PerActivity
 public class MainPresenter implements MainContract.Presenter {
@@ -94,6 +98,7 @@ public class MainPresenter implements MainContract.Presenter {
     @Override
     public void testPostValidity(PostDataBaseEntity postDataBaseEntity, String url, Map<String, String> headers) {
         String completeUrl = url + "?__a=1";
+        Log.d(TAG, "testPostValidity > URL : "+completeUrl);
         compositeDisposable.add(repository.testPost(completeUrl, headers)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())

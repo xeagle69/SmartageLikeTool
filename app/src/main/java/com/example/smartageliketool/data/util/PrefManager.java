@@ -71,4 +71,15 @@ public class PrefManager {
     //***************************************************************************************************
 
 
+    public void saveLikeCount(Integer likeCount) {
+        prefs.edit().putInt("like_count", likeCount).apply();
+    }
+
+    public Integer loadLikeCount() {
+        return prefs.getInt("like_count", 0);
+    }
+
+    //***************************************************************************************************
+
+
 }

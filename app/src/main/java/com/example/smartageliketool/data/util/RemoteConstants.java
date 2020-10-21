@@ -85,8 +85,13 @@ public class RemoteConstants {
     public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
     public static final String INSTAGRAM_LANGUAGE_PREFIX = "?hl=en";
     public static final String AWAKE_TAG = "My Tag";
+
     public static final String ACTION_BLOCK_HINT = "Action Blocked";
     public static final String RESTRICTED_VIDEO_HINT = "Restricted Video";
+    public static final String WEBPAGE_NOT_AVAILABLE = "Webpage not available";
+    public static final String TO_SECURE_YOUR_ACCOUNT = "To secure your account,let us know";
+
+
     public static final String COMPRIMISED_HINT = "Your Account Was Compromised";
     public static final String UNUSUAL_HINT = "We noticed unusual";
     public static final String ACCOUNT_OWN_HINT = "Help Us Confirm You Own This Account";
