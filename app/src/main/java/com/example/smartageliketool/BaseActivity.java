@@ -2,6 +2,7 @@ package com.example.smartageliketool;
 
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -19,7 +20,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.smartageliketool.data.util.PrefManager;
 
-public class BaseActivity extends AppCompatActivity {
+public class BaseActivity extends Activity {
 
 
     public static final String TAG = "xeagle69_BaseActivity >>";

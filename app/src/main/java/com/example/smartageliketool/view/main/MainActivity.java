@@ -1,11 +1,16 @@
 package com.example.smartageliketool.view.main;
 
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -14,6 +19,8 @@ import android.os.Handler;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.util.Log;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -25,8 +32,11 @@ import android.webkit.WebViewClient;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
 
 import com.example.smartageliketool.BaseActivity;
 import com.example.smartageliketool.BaseApplication;
@@ -70,6 +80,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     private CountDownTimer changeIp;
     private final String COMMAND_FLIGHT_MODE_1 = "settings put global airplane_mode_on";
     private final String COMMAND_FLIGHT_MODE_2 = "am broadcast -a android.intent.action.AIRPLANE_MODE --ez state";
+    private static final String SMS_RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
     private PrefManager prefManager;
     private SharedPreferences prefs;
     private String currentIpAddress;
@@ -83,8 +94,6 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     private Boolean isUserStatusChanged = false;
     private int webViewHeight;
     private CountDownTimer webViewCountDownTimer = null;
-
-
     private Date currentTime;
     private Date startTime;
 
@@ -120,6 +129,8 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        IntentFilter filter = new IntentFilter(SMS_RECEIVED);
+        this.registerReceiver(smsBroadcastReceiver, filter);
         ButterKnife.bind(this);
         if (RemoteConstants.isRootGiven()) {
             Toast.makeText(MainActivity.this, "it is Root !!!", Toast.LENGTH_LONG).show();
@@ -134,12 +145,12 @@ public class MainActivity extends BaseActivity implements MainContract.View {
             txtActivityLabel.setText("IP : " + ip);
             user_status = UserAccountStatus.OK;
             totalLikeCount = prefManager.loadLikeCount();
-
-
             startTime = Calendar.getInstance().getTime();
-
-
             presenter.getToken("super-admin", "a8k9p763gYv2RBq");
+
+//            sendSms();
+
+
         } else {
             Toast.makeText(MainActivity.this, "it is NOT Root !!!", Toast.LENGTH_LONG).show();
         }
@@ -174,7 +185,6 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         headerMap = new HashMap<>();
         shouldOpenWebView = true;
         cookieGetCount = 0;
-
         presenter.getPostList(prefManager.loadToken());
     }
 
@@ -183,6 +193,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     public void tokenFailed(Throwable error) {
         Toast.makeText(MainActivity.this, "Token NOT Received !!!", Toast.LENGTH_LONG).show();
         Log.d(TAG, "Token NOT Received");
+
     }
 
     @SuppressLint("LongLogTag")
@@ -365,6 +376,13 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         for (int i = 0; i < postEntities.size(); i++) {
             PostDataBaseEntity postDataBaseEntity = new PostDataBaseEntity(postEntities.get(i).getId(), postEntities.get(i).getLink(), postEntities.get(i).getMediaId());
             dataBase.postTableDao().insertPost(postDataBaseEntity);
+        }
+        if (publicLastCookie == null) {
+            if (isNetworkAvailable()) {
+                presenter.getCookie(prefManager.loadToken());
+            }
+        } else {
+            likeMainFunction(getPostForCookie(publicLastCookie.getId()));
         }
     }
 
@@ -657,7 +675,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         );
         presenter.updateCookie(urlStringBuilder.toString(), prefManager.loadToken(), updateCookieDto);
 
-        //TODO update 4 parameter for cookie
+
     }
 
     @SuppressLint("LongLogTag")
@@ -859,6 +877,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                 databaseModule.postTableDao().deletePost(postDataBaseEntity);
                 presenter.deActivePost(postDataBaseEntity, prefManager.loadToken(), RemoteConstants.API_BASE + "cookie_posts/" + postDataBaseEntity.getActualId());
             }
+        likeMainFunction(null);
     }
 
     @SuppressLint("LongLogTag")
@@ -916,6 +935,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                 databaseModule.postTableDao().deletePost(postDataBaseEntity);
                 presenter.deActivePost(postDataBaseEntity, prefManager.loadToken(), RemoteConstants.API_BASE + "cookie_posts/" + postDataBaseEntity.getActualId());
             }
+
         likeMainFunction(null);
     }
 
@@ -947,7 +967,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     @SuppressLint("LongLogTag")
     @Override
     public void postForLikedByMeError(PostDataBaseEntity postDataBaseEntity, Throwable error) {
-        if (error instanceof HttpException) {
+        if (error instanceof HttpException)
             if (((HttpException) error).code() == 404) {
                 Log.d(TAG, "test-post-response : inValidPost");
                 DatabaseModule databaseModule = DatabaseModule.getInstance(MainActivity.this);
@@ -956,8 +976,8 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                 PostDataBaseEntity post = getPostForCookie(publicLastCookie.getId());
                 likeMainFunction(post);
             }
-        } else
-            likeMainFunction(null);
+
+        likeMainFunction(null);
 
     }
 
@@ -1102,6 +1122,110 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
 
     //change ip logic end
+    //**********************************************************************************************
+
+
+    //**********************************************************************************************
+    //send sms start
+
+    private void sendSms() {
+        if (
+                (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED)
+                        ||
+                        (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED)
+        ) {
+            try {
+                SmsManager smsMgrVar = SmsManager.getDefault();
+                smsMgrVar.sendTextMessage("8080", null, "0", null, null);
+                Toast.makeText(getApplicationContext(), "Sms Sent",
+                        Toast.LENGTH_LONG).show();
+            } catch (Exception ErrVar) {
+                Toast.makeText(getApplicationContext(), ErrVar.getMessage().toString(),
+                        Toast.LENGTH_LONG).show();
+                ErrVar.printStackTrace();
+            }
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestPermissions(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS}, 10);
+            }
+        }
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 10) {
+
+            if (permissions[0].equals(Manifest.permission.SEND_SMS)) {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    sendSms();
+                } else {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 10);
+                    }
+                }
+            }
+        }
+
+
+    }
+
+    private final BroadcastReceiver smsBroadcastReceiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(SMS_RECEIVED)) {
+                Bundle bundle = intent.getExtras();
+                if (bundle != null) {
+                    // get sms objects
+                    Object[] pdus = (Object[]) bundle.get("pdus");
+                    if (pdus.length == 0) {
+                        return;
+                    }
+                    // large message might be broken into many
+                    SmsMessage[] messages = new SmsMessage[pdus.length];
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < pdus.length; i++) {
+                        messages[i] = SmsMessage.createFromPdu((byte[]) pdus[i]);
+                        sb.append(messages[i].getMessageBody());
+                    }
+                    String sender = messages[0].getOriginatingAddress();
+                    String message = sb.toString();
+
+
+                    String[] messageArray = message.split(" ");
+
+                    int indexAmount = 0;
+                    boolean isInternetMessage = false;
+                    for (int i = 0; i < messageArray.length; i++) {
+                        if (messageArray[i].equals("مگابایت")) {
+                            indexAmount = (i - 1);
+                            isInternetMessage = true;
+                        }
+                    }
+
+                    if (isInternetMessage) {
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle(sender)
+                                .setMessage(messageArray[indexAmount] + " Mb")
+                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                    }
+                                })
+                                .show();
+                    }
+
+
+                    abortBroadcast();
+                }
+            }
+        }
+    };
+
+
+    //send sms end
     //**********************************************************************************************
 
 
