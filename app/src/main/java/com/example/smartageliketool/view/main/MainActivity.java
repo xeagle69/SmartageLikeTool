@@ -98,7 +98,6 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     private Date startTime;
 
     private boolean ifChangeIpStarted = false;
-    private boolean ifUserStatusChanged = false;
 
     private Integer currentLikeCount = 0;
 
@@ -514,6 +513,8 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                             @Nullable
                             @Override
                             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+
+
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
@@ -589,10 +590,10 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                 }
             } else {
                 shouldOpenWebView = true;
-                if (isNetworkAvailable()) {
-                    getCookie("likeMainFunction");
-                }
+                getCookie("likeMainFunction");
             }
+        } else {
+            Log.d(TAG, "ifChangeIpStarted  = true : likeMainFunction");
         }
     }
 
@@ -804,6 +805,8 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                         Log.d(TAG, "Restarting System : checkSystemStability");
                         getCookie("checkSystemStability");
                     }
+                } else {
+                    Log.d(TAG, "ifChangeIpStarted is TRUE : checkSystemStability");
                 }
             }
         }.start();
