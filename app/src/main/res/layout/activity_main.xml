@@ -60,9 +60,9 @@
     <!--            android:id="@+id/txt_main_activity_changing_ip_status_label"-->
     <!--            android:layout_width="wrap_content"-->
     <!--            android:layout_height="wrap_content"-->
-    <!--            android:layout_alignParentRight="true"-->
+    <!--            android:layout_alignParentLeft="true"-->
     <!--            android:layout_centerVertical="true"-->
-    <!--            android:layout_marginRight="8dp"-->
+    <!--            android:layout_marginLeft="8dp"-->
     <!--            android:gravity="center"-->
     <!--            android:text="Changing IP"-->
     <!--            android:textColor="@android:color/holo_green_dark"-->
@@ -95,9 +95,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
+        android:layout_alignParentLeft="true"
         android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"
+        android:layout_marginLeft="16dp"
         android:gravity="center"
         android:text="Changing IP"
         android:textColor="@android:color/holo_red_dark"
@@ -111,9 +111,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/txt_main_activity_changing_ip_status_label"
-        android:layout_alignParentRight="true"
+        android:layout_alignParentLeft="true"
         android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"
+        android:layout_marginLeft="16dp"
         android:gravity="center"
         android:textColor="@android:color/holo_red_dark"
         android:textSize="16sp"
@@ -121,13 +121,26 @@
 
 
     <TextView
-        android:id="@+id/txt_main_activity_label"
+        android:id="@+id/last_count_like_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/txt_main_activity_current_like_count_value"
+        android:layout_alignParentLeft="true"
         android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_alignParentRight="true"
+        android:layout_marginLeft="16dp"
+        android:gravity="center"
+        android:textColor="@android:color/holo_red_dark"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/txt_main_activity_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/last_count_like_value"
+        android:layout_marginTop="16dp"
+        android:layout_marginLeft="16dp"
+        android:layout_alignParentLeft="true"
         android:gravity="center"
         android:text="Main Activity"
         android:textColor="@android:color/holo_red_dark"
@@ -140,8 +153,8 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/txt_main_activity_label"
         android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_alignParentRight="true"
+        android:layout_marginLeft="16dp"
+        android:layout_alignParentLeft="true"
         android:gravity="center"
         android:textColor="@android:color/holo_red_dark"
         android:textSize="16sp"
@@ -153,8 +166,8 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/txt_main_like_per_seccond"
         android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_alignParentRight="true"
+        android:layout_marginLeft="16dp"
+        android:layout_alignParentLeft="true"
         android:gravity="center"
         android:textColor="@android:color/holo_red_dark"
         android:textSize="16sp"

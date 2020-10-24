@@ -88,14 +88,19 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     private Boolean shouldOpenWebView;
     private Integer cookieGetCount;
     private Integer totalLikeCount;
+    private Integer lastTotalLikeCount = 0;
     private Map<String, String> headerMap;
     private Boolean isPostLikeStarted = false;
     private Boolean isPostLikeChecked = false;
-    private Boolean isUserStatusChanged = false;
     private int webViewHeight;
     private CountDownTimer webViewCountDownTimer = null;
     private Date currentTime;
     private Date startTime;
+
+    private boolean ifChangeIpStarted = false;
+    private boolean ifUserStatusChanged = false;
+
+    private Integer currentLikeCount = 0;
 
 
     private GetCookieResponse publicLastCookie = null;
@@ -105,6 +110,9 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
     @BindView(R.id.txt_main_activity_current_like_count_value)
     TextView txtCurrentLikeTv;
+
+    @BindView((R.id.last_count_like_value))
+    TextView txtLastCountValue;
 
 
     @BindView(R.id.txt_main_activity_changing_ip_status_label)
@@ -147,6 +155,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
             totalLikeCount = prefManager.loadLikeCount();
             startTime = Calendar.getInstance().getTime();
             presenter.getToken("super-admin", "a8k9p763gYv2RBq");
+            checkSystemStability();
 
 //            sendSms();
 
@@ -174,7 +183,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         super.onDestroy();
     }
 
-
+    //  Token Success and fail
     @SuppressLint("LongLogTag")
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Override
@@ -193,9 +202,12 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     public void tokenFailed(Throwable error) {
         Toast.makeText(MainActivity.this, "Token NOT Received !!!", Toast.LENGTH_LONG).show();
         Log.d(TAG, "Token NOT Received");
+        presenter.getToken("super-admin", "a8k9p763gYv2RBq");
 
     }
 
+
+    //postlist success and fail
     @SuppressLint("LongLogTag")
     @Override
     public void postListReceivedSuccess(List<PostEntity> postEntities) {
@@ -207,7 +219,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         }
         if (publicLastCookie == null) {
             if (isNetworkAvailable()) {
-                presenter.getCookie(prefManager.loadToken());
+                getCookie("postListReceivedSuccess");
             }
         } else {
             likeMainFunction(getPostForCookie(publicLastCookie.getId()));
@@ -222,59 +234,64 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         Toast.makeText(MainActivity.this, "Post list NOT Received !!!", Toast.LENGTH_LONG).show();
         Log.d(TAG, "Post list NOT Received");
         txtActivityLabel.setText("Post list NOT Received");
+        presenter.getPostList(prefManager.loadToken());
 
     }
 
+    //get Cookie success and fail
     @SuppressLint("LongLogTag")
     public void getCookieSuccess(GetCookieResponse getCookieResponse) {
         Log.d(TAG, "Cookie Received");
+        shouldOpenWebView = true;
         if (publicLastCookie != null) {
             deleteCookieInfo(publicLastCookie.getId());
         }
-        isUserStatusChanged = false;
-        user_status = UserAccountStatus.OK;
         publicLastCookie = getCookieResponse;
-        if (cookieGetCount == 5) {
+        if (cookieGetCount >= 5) {
             txtChangingIp.setVisibility(View.VISIBLE);
-            changeIp();
+            if (!ifChangeIpStarted)
+                changeIp();
         } else {
-            if ((getCookieResponse.getCsrfToken() != null) && (getCookieResponse.getIgWwwClaim() != null) && (getCookieResponse.getInstagramAjax() != null) && (getCookieResponse.getIgAppId() != null)) {
-                headerMap.put("cookie", getCookieResponse.getCookie());
-                headerMap.put("User-Agent", getCookieResponse.getUserAgent());
-                prefManager.saveCfrtoken(getCookieResponse.getCsrfToken());
-                prefManager.saveIgClaim(getCookieResponse.getIgWwwClaim());
-                prefManager.saveInstagramAjax(getCookieResponse.getInstagramAjax());
-                prefManager.saveInstagramAppId(getCookieResponse.getIgAppId());
-                shouldOpenWebView = false;
-                PostDataBaseEntity post = getPostForCookie(getCookieResponse.getId());
+            prefManager.saveInstagramAppId(null);
+            prefManager.saveInstagramAjax(null);
+            prefManager.saveIgClaim(null);
+            prefManager.saveCfrtoken(null);
+            headerMap.put("cookie", getCookieResponse.getCookie());
+            headerMap.put("User-Agent", getCookieResponse.getUserAgent());
+            PostDataBaseEntity post = getPostForCookie(getCookieResponse.getId());
 
-
-                if (post == null) {
-                    if (isNetworkAvailable())
-                        presenter.getCookie(prefManager.loadToken());
-                } else {
-                    presenter.testPostValidity(post, post.getLink(), headerMap);
-                }
-
-
+            if (post == null) {
+                if (isNetworkAvailable())
+                    getCookie("getCookieSuccess");
             } else {
-                headerMap.put("cookie", getCookieResponse.getCookie());
-                headerMap.put("User-Agent", getCookieResponse.getUserAgent());
-                PostDataBaseEntity post = getPostForCookie(getCookieResponse.getId());
-
-                if (post == null) {
-                    if (isNetworkAvailable())
-                        presenter.getCookie(prefManager.loadToken());
-                } else {
-                    presenter.testPostValidity(post, post.getLink(), headerMap);
-                }
-
-
+                presenter.testPostValidity(post, post.getLink(), headerMap);
             }
             cookieGetCount++;
         }
 
     }
+
+    @SuppressLint("LongLogTag")
+    public void getCookie(String from) {
+        DatabaseModule databaseModule = DatabaseModule.getInstance(this);
+        if (publicLastCookie != null)
+            Log.d(TAG, "geting cookie from " + from + " " + String.valueOf(cookieGetCount) + " " + publicLastCookie.getId() + " " + databaseModule.likeTableDao().getCountByCookie(publicLastCookie.getId()));
+        else
+            Log.d(TAG, "geting cookie from " + from + " " + String.valueOf(cookieGetCount));
+        presenter.getCookie(prefManager.loadToken());
+    }
+
+    @SuppressLint("LongLogTag")
+    @Override
+    public void getCookieFailed(Throwable error) {
+        Toast.makeText(MainActivity.this, "Cookie NOT Received !!!", Toast.LENGTH_LONG).show();
+        Log.d(TAG, "Cookie NOT Received");
+        txtActivityLabel.setText("Cookie NOT Received");
+        if (isNetworkAvailable()) {
+            getCookie("getCookieFailed");
+        }
+    }
+
 
     private void deleteCookieInfo(int cookie_id) {
         DatabaseModule databaseModule = DatabaseModule.getInstance(this);
@@ -290,20 +307,6 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         }
     }
 
-
-    @SuppressLint("LongLogTag")
-    @Override
-    public void getCookieFailed(Throwable error) {
-        Toast.makeText(MainActivity.this, "Cookie NOT Received !!!", Toast.LENGTH_LONG).show();
-        Log.d(TAG, "Cookie NOT Received");
-        txtActivityLabel.setText("Cookie NOT Received");
-        if (isNetworkAvailable()) {
-            presenter.getCookie(prefManager.loadToken());
-        }
-
-
-    }
-
     @Override
     public void updateCookieSuccess(String url, UpdateCookieDto updateCookieDto) {
 
@@ -314,15 +317,24 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
     }
 
+    private void incrementCount() {
+        totalLikeCount++;
+        lastTotalLikeCount++;
+    }
+
+    public void setLikeTextes() {
+        txtCurrentLikeTv.setText("total Likes from scratch : " + String.valueOf(totalLikeCount) + "");
+        txtLastCountValue.setText("total Likes from last run : " + String.valueOf(lastTotalLikeCount));
+    }
+
 
     @SuppressLint("LongLogTag")
     @Override
     public void likeApiProcessIsSuccess(LikeResponseDto likeResponseDto, PostDataBaseEntity post) {
         Log.d(TAG, "likeApiProcessIsSuccess");
-        totalLikeCount++;
-        txtCurrentLikeTv.setText(totalLikeCount + "");
+        setLikeTextes();
+        incrementCount();
         prefManager.saveLikeCount(totalLikeCount);
-
 
         currentTime = Calendar.getInstance().getTime();
         txtLastLikeTime.setText(currentTime.toString());
@@ -330,16 +342,14 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
         long diffInSec = ((currentTime.getTime() - startTime.getTime()) / 1000);
 
-        float averagePerSecond = ((float) totalLikeCount / (float) diffInSec);
+        float averagePerSecond = ((float) lastTotalLikeCount / (float) diffInSec);
 
 
-        Log.d(TAG, "total like count :  " + totalLikeCount);
+        Log.d(TAG, "total like count :  " + lastTotalLikeCount);
 
         Log.d(TAG, "average like per seccond : " + Float.toString(averagePerSecond));
 
         txtLikePerSeccond.setText(Float.toString(averagePerSecond) + " p/s");
-
-
         DatabaseModule databaseModule = DatabaseModule.getInstance(MainActivity.this);
         databaseModule.likeTableDao().insertLikeTableEntity(new LikeTable(publicLastCookie.getId(), post.getId()));
 
@@ -351,12 +361,6 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     @SuppressLint("LongLogTag")
     @Override
     public void likeApiProcessIsFailed(PostDataBaseEntity post, Throwable error) {
-
-        if (isNetworkAvailable()) {
-            presenter.getCookie(prefManager.loadToken());
-            cookieGetCount--;
-        }
-
     }
 
     @Override
@@ -379,7 +383,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         }
         if (publicLastCookie == null) {
             if (isNetworkAvailable()) {
-                presenter.getCookie(prefManager.loadToken());
+                getCookie("postListReceivedSuccessBetween");
             }
         } else {
             likeMainFunction(getPostForCookie(publicLastCookie.getId()));
@@ -474,150 +478,121 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
     @SuppressLint("LongLogTag")
     private void likeMainFunction(PostDataBaseEntity post) {
-        if (post != null) {
-            if (shouldOpenWebView) {
-                Log.d(TAG, "likeMainFunction - shouldOpenWebView");
-                Log.d(TAG, "likeMainFunction " + post.getLink());
-                //load webView
-                //****************************************************************************************************************************
+        if (!ifChangeIpStarted) {
+            if (post != null) {
+                if (shouldOpenWebView) {
+                    Log.d(TAG, "likeMainFunction - shouldOpenWebView");
+                    Log.d(TAG, "likeMainFunction " + post.getLink());
+                    //load webView
+                    //****************************************************************************************************************************
 
 
-                if (webView != null) {
-                    user_status = UserAccountStatus.OK;
-                    webView.clearHistory();
-                    webView.clearCache(true);
-                    CookieManager.getInstance().removeAllCookies(null);
-                    CookieManager cookieMgr = CookieManager.getInstance();
-                    cookieMgr.removeAllCookies(null);
-                    webView.getSettings().setDomStorageEnabled(true);
-                    webView.getSettings().setLoadsImagesAutomatically(false);
-                    webView.getSettings().setJavaScriptEnabled(true);
+                    if (webView != null) {
+                        user_status = UserAccountStatus.OK;
+                        webView.clearHistory();
+                        webView.clearCache(true);
+                        CookieManager.getInstance().removeAllCookies(null);
+                        CookieManager cookieMgr = CookieManager.getInstance();
+                        cookieMgr.removeAllCookies(null);
+                        webView.getSettings().setDomStorageEnabled(true);
+                        webView.getSettings().setLoadsImagesAutomatically(false);
+                        webView.getSettings().setJavaScriptEnabled(true);
 
 
-                    webView.setWebViewClient(new WebViewClient() {
-                        @RequiresApi(api = Build.VERSION_CODES.N)
-                        @Override
-                        public void onPageFinished(WebView view, String url) {
-                            Log.d(TAG, "likeMainFunction - shouldOpenWebView - onPageFinished - url >>>  " + url);
-                            webViewHeight = view.getContentHeight();
-                            clickCookie(webView);
-                            super.onPageFinished(view, url);
-                        }
+                        webView.setWebViewClient(new WebViewClient() {
+                            @RequiresApi(api = Build.VERSION_CODES.N)
+                            @Override
+                            public void onPageFinished(WebView view, String url) {
+                                Log.d(TAG, "likeMainFunction - shouldOpenWebView - onPageFinished - url >>>  " + url);
+                                webViewHeight = view.getContentHeight();
+                                clickCookie(webView);
+                                super.onPageFinished(view, url);
+                            }
 
 
-                        @RequiresApi(api = Build.VERSION_CODES.N)
-                        @Nullable
-                        @Override
-                        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-
-
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    checkAccountStatus(webView);
-
-                                }
-                            });
-
-
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (request.getUrl().getPath() != null) {
-                                        if (request.getUrl().getPath().contains("web/likes")) {
-                                            extractHeaderParams(request.getRequestHeaders(), post);
-                                            webView.loadUrl(RemoteConstants.BLANK_LINK);
-                                            presenter.testPostforWebView(post, post.getLink(), headerMap);
-                                        }
-                                    }
-                                }
-
-                            });
-
-
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (!isPostLikeChecked) {
-                                        webView.evaluateJavascript(RemoteConstants.IS_POST_AVALABLE_SCRIPT,
-                                                new ValueCallback<String>() {
-                                                    @Override
-                                                    public void onReceiveValue(String html) {
-
-                                                        if (html.contains("Save") && html.contains("Share Post") && html.contains("More options")) {
-                                                            isPostLikeStarted = true;
-                                                            isPostLikeChecked = true;
-                                                        }
-                                                    }
-                                                });
-                                    }
-                                }
-                            });
-
-
-                            if (isPostLikeStarted) {
-                                isPostLikeStarted = false;
-                                isPostLikeChecked = false;
+                            @RequiresApi(api = Build.VERSION_CODES.N)
+                            @Nullable
+                            @Override
+                            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        likePost(webView);
+                                        if (user_status == UserAccountStatus.OK)
+                                            checkAccountStatus(webView);
                                     }
                                 });
+
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (request.getUrl().getPath() != null) {
+                                            if (request.getUrl().getPath().contains("web/likes")) {
+                                                extractHeaderParams(request.getRequestHeaders(), post);
+                                                webView.loadUrl(RemoteConstants.BLANK_LINK);
+                                                presenter.testPostforWebView(post, post.getLink(), headerMap);
+                                            }
+                                        }
+                                    }
+
+                                });
+
+
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (!isPostLikeChecked) {
+                                            webView.evaluateJavascript(RemoteConstants.IS_POST_AVALABLE_SCRIPT,
+                                                    new ValueCallback<String>() {
+                                                        @Override
+                                                        public void onReceiveValue(String html) {
+
+                                                            if (html.contains("Save") && html.contains("Share Post") && html.contains("More options")) {
+                                                                isPostLikeStarted = true;
+                                                                isPostLikeChecked = true;
+                                                            }
+                                                        }
+                                                    });
+                                        }
+                                    }
+                                });
+
+
+                                if (isPostLikeStarted) {
+                                    isPostLikeStarted = false;
+                                    isPostLikeChecked = false;
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            likePost(webView);
+                                        }
+                                    });
+                                }
+
+
+                                return super.shouldInterceptRequest(view, request);
+
                             }
 
-
-                            return super.shouldInterceptRequest(view, request);
-
+                        });
+                        String[] cookiesList = publicLastCookie.getCookie().trim().split(RemoteConstants.SEMICOLON_PATTERN);
+                        for (String ccookie : cookiesList) {
+                            CookieManager.getInstance().setCookie(RemoteConstants.INSTAGRAM_HOME_PLUS, ccookie.trim());
                         }
 
-                    });
-                    String[] cookiesList = publicLastCookie.getCookie().trim().split(RemoteConstants.SEMICOLON_PATTERN);
-                    for (String ccookie : cookiesList) {
-                        CookieManager.getInstance().setCookie(RemoteConstants.INSTAGRAM_HOME_PLUS, ccookie.trim());
+                        webView.loadUrl(post.getLink() + "?hl=en");
                     }
 
-                    if (webViewCountDownTimer == null) {
-                        Log.d(TAG, "webViewCountDownTimer START");
-                        webViewCountDownTimer = new CountDownTimer(300000, 1000) {
-                            public void onTick(long millisUntilFinished) {
-                            }
+                    //****************************************************************************************************************************
 
-                            public void onFinish() {
-                                webViewCountDownTimer = null;
-                                Log.d(TAG, "webViewCountDownTimer Trigger");
-                                recreate();
-
-                            }
-                        }.start();
-                    }
-
-
-                    webView.loadUrl(post.getLink() + "?hl=en");
+                } else {
+                    presenter.testPostforLikedByMe(post, post.getLink(), headerMap);
                 }
-
-                //****************************************************************************************************************************
-
             } else {
-
-
-                presenter.testPostforLikedByMe(post, post.getLink(), headerMap);
-
-
-                if (webViewCountDownTimer != null) {
-                    Log.d(TAG, "webViewCountDownTimer >>>  Cancel");
-                    webViewCountDownTimer.cancel();
-                    webViewCountDownTimer = null;
+                shouldOpenWebView = true;
+                if (isNetworkAvailable()) {
+                    getCookie("likeMainFunction");
                 }
-
-
             }
-        } else {
-            shouldOpenWebView = true;
-            if (isNetworkAvailable()) {
-                presenter.getCookie(prefManager.loadToken());
-            }
-
         }
     }
 
@@ -674,8 +649,6 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                 prefManager.loadInstagramAppId()
         );
         presenter.updateCookie(urlStringBuilder.toString(), prefManager.loadToken(), updateCookieDto);
-
-
     }
 
     @SuppressLint("LongLogTag")
@@ -693,8 +666,11 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                             webView.loadUrl(RemoteConstants.BLANK_LINK);
                             shouldOpenWebView = true;
                             if (isNetworkAvailable()) {
-                                presenter.getCookie(prefManager.loadToken());
-                                cookieGetCount--;
+                                if (user_status == UserAccountStatus.OK) {
+                                    user_status = UserAccountStatus.PAUSED_BY_LOGIN_NEEDED;
+                                    getCookie("checkAccountStatus");
+                                    cookieGetCount--;
+                                }
                             }
 
                         }
@@ -745,19 +721,20 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
     @Override
     public void changeIp() {
+        ifChangeIpStarted = true;
+        webView.stopLoading();
         changeIp = new CountDownTimer(60000, 1000) {
+            @SuppressLint("LongLogTag")
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             public void onTick(long millisUntilFinished) {
-
-
-                if (millisUntilFinished < 50000 && millisUntilFinished > 49000) {
+                if (millisUntilFinished < 59000 && millisUntilFinished > 58000) {
                     try {
                         setFlightMode(MainActivity.this);
                     } catch (Exception ex) {
                         System.out.println(ex.getMessage());
                     }
                 }
-                if (millisUntilFinished < 40000 && millisUntilFinished > 39000) {
+                if (millisUntilFinished < 40000 && millisUntilFinished > 38000) {
                     try {
                         int enabled = isFlightModeEnabled(MainActivity.this) ? 0 : 1;
                         if (enabled == 0)
@@ -766,7 +743,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                         System.out.println(ex.getMessage());
                     }
                 }
-                if (millisUntilFinished < 39000)
+                if (millisUntilFinished < 38000)
                     if (isNetworkAvailable()) {
                         this.onFinish();
                     }
@@ -775,73 +752,61 @@ public class MainActivity extends BaseActivity implements MainContract.View {
             @SuppressLint("LongLogTag")
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             public void onFinish() {
-                if (isNetworkAvailable()) {
-
-                    //show current ip
-
-                    String ip = getMobileIPAddress(true);
-                    if (ip.equals(currentIpAddress)) {
-                        txtChangingIp.setVisibility(View.VISIBLE);
-                        changeIp();
-                    } else {
-                        txtChangingIp.setVisibility(View.INVISIBLE);
-                        currentIpAddress = ip;
-                        txtActivityLabel.setText("IP : " + ip);
-                        //ip has been changed , go for next step
-                        cookieGetCount = 0;
 
 
-                        if ((publicLastCookie.getCsrfToken() != null) && (publicLastCookie.getIgWwwClaim() != null) && (publicLastCookie.getInstagramAjax() != null) && (publicLastCookie.getIgAppId() != null)) {
-                            headerMap.put("cookie", publicLastCookie.getCookie());
-                            headerMap.put("User-Agent", publicLastCookie.getUserAgent());
-                            prefManager.saveCfrtoken(publicLastCookie.getCsrfToken());
-                            prefManager.saveIgClaim(publicLastCookie.getIgWwwClaim());
-                            prefManager.saveInstagramAjax(publicLastCookie.getInstagramAjax());
-                            prefManager.saveInstagramAppId(publicLastCookie.getIgAppId());
-                            shouldOpenWebView = false;
-                            PostDataBaseEntity post = getPostForCookie(publicLastCookie.getId());
-                            if (post == null) {
-                                if (isNetworkAvailable())
-                                    presenter.getCookie(prefManager.loadToken());
-                            } else {
-                                presenter.testPostValidity(post, post.getLink(), headerMap);
-                            }
-                        } else {
-                            headerMap.put("cookie", publicLastCookie.getCookie());
-                            headerMap.put("User-Agent", publicLastCookie.getUserAgent());
-                            PostDataBaseEntity post = getPostForCookie(publicLastCookie.getId());
-
-
-                            if (post == null) {
-                                if (isNetworkAvailable())
-                                    presenter.getCookie(prefManager.loadToken());
-                            } else {
-                                presenter.testPostValidity(post, post.getLink(), headerMap);
-                            }
-
-
-                        }
-
-
-//                        headerMap.put("cookie", publicLastCookie.getCookie());
-//                        headerMap.put("User-Agent", publicLastCookie.getUserAgent());
-//                        PostDataBaseEntity post = getPostForCookie(publicLastCookie.getId());
-//                        Log.d(TAG, "testpost id :" + post.getId());
-//                        Log.d(TAG, "testpost link :" + post.getLink());
-//                        presenter.testPostValidity(post, post.getLink(), headerMap);
-                    }
+                String ip = getMobileIPAddress(true);
+                if (ip.equals(currentIpAddress)) {
+                    txtChangingIp.setVisibility(View.VISIBLE);
                     this.cancel();
+                    changeIp();
                 } else {
                     this.cancel();
-                    this.start();
+                    ifChangeIpStarted = false;
+                    txtChangingIp.setVisibility(View.INVISIBLE);
+                    currentIpAddress = ip;
+                    txtActivityLabel.setText("IP : " + ip);
+                    //ip has been changed , go for next step
+                    cookieGetCount = 0;
+                    headerMap.put("cookie", publicLastCookie.getCookie());
+                    headerMap.put("User-Agent", publicLastCookie.getUserAgent());
+                    PostDataBaseEntity post = getPostForCookie(publicLastCookie.getId());
+                    if (post == null) {
+                        if (isNetworkAvailable())
+                            getCookie("changeIp");
+                    } else {
+                        presenter.testPostValidity(post, post.getLink(), headerMap);
+                    }
+
+                }
+
+            }
+        }.start();
+    }
+
+    public void checkSystemStability() {
+        currentLikeCount = lastTotalLikeCount;
+        webViewCountDownTimer = new CountDownTimer(60000, 1000) {
+            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+            public void onTick(long millisUntilFinished) {
+                System.out.println("checkSystemStability : " + String.valueOf(millisUntilFinished));
+            }
+
+            @SuppressLint("LongLogTag")
+            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+            public void onFinish() {
+                this.cancel();
+                this.start();
+                if (!ifChangeIpStarted) {
+                    if (lastTotalLikeCount > currentLikeCount) {
+                        Log.d(TAG, "System Ok : checkSystemStability");
+                        currentLikeCount = lastTotalLikeCount;
+                    } else {
+                        Log.d(TAG, "Restarting System : checkSystemStability");
+                        getCookie("checkSystemStability");
+                    }
                 }
             }
-        };
-
-
-        changeIp.start();
-
-
+        }.start();
     }
 
     @SuppressLint("LongLogTag")
@@ -851,12 +816,10 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         if (instaPostResponse.getGraphql().getShortcodeMedia().getViewerHasLiked()) {
             DatabaseModule databaseModule = DatabaseModule.getInstance(this);
             databaseModule.ignoreTableDao().insertIgnoreTableEntity(new IgnoreTable(publicLastCookie.getId(), postDataBaseEntity.getId()));
-
-
             PostDataBaseEntity post = getPostForCookie(publicLastCookie.getId());
             if (post == null) {
                 if (isNetworkAvailable())
-                    presenter.getCookie(prefManager.loadToken());
+                    getCookie("validPost");
             } else {
                 presenter.testPostValidity(post, post.getLink(), headerMap);
             }
@@ -877,23 +840,21 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                 databaseModule.postTableDao().deletePost(postDataBaseEntity);
                 presenter.deActivePost(postDataBaseEntity, prefManager.loadToken(), RemoteConstants.API_BASE + "cookie_posts/" + postDataBaseEntity.getActualId());
             }
-        likeMainFunction(null);
+        getCookie("inValidPost");
     }
 
     @SuppressLint("LongLogTag")
     @Override
     public void checkForWebView(PostDataBaseEntity postDataBaseEntity, InstaPostResponse instaPostResponse) {
         Log.d(TAG, "test-post-response : checkForWebView Success");
-
-
         if (instaPostResponse.getGraphql().getShortcodeMedia().getViewerHasLiked()) {
             DatabaseModule databaseModule = DatabaseModule.getInstance(this);
             databaseModule.likeTableDao().insertLikeTableEntity(new LikeTable(publicLastCookie.getId(), postDataBaseEntity.getId()));
-            shouldOpenWebView = false;
-            totalLikeCount++;
-            txtCurrentLikeTv.setText(totalLikeCount + "");
+            if (prefManager.loadCfrtoken() != null && prefManager.loadIgClaim() != null && prefManager.loadInstagramAjax() != null && prefManager.loadInstagramAppId() != null)
+                shouldOpenWebView = false;
+            incrementCount();
+            setLikeTextes();
             prefManager.saveLikeCount(totalLikeCount);
-
 
             currentTime = Calendar.getInstance().getTime();
             txtLastLikeTime.setText(currentTime.toString());
@@ -902,10 +863,10 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
             Log.d(TAG, "diffrent in seccond : " + diffInSec);
 
-            float averagePerSecond = ((float) totalLikeCount / (float) diffInSec);
+            float averagePerSecond = ((float) lastTotalLikeCount / (float) diffInSec);
 
 
-            Log.d(TAG, "total like count :  " + totalLikeCount);
+            Log.d(TAG, "total like count :  " + lastTotalLikeCount);
 
             Log.d(TAG, "average like per seccond : " + Float.toString(averagePerSecond));
 
@@ -915,13 +876,13 @@ public class MainActivity extends BaseActivity implements MainContract.View {
             PostDataBaseEntity post = getPostForCookie(publicLastCookie.getId());
             if (post == null) {
                 if (isNetworkAvailable())
-                    presenter.getCookie(prefManager.loadToken());
+                    getCookie("checkForWebView");
             } else {
                 presenter.testPostValidity(post, post.getLink(), headerMap);
             }
 
         } else {
-            likeMainFunction(null);
+            getCookie("checkForWebView");
         }
     }
 

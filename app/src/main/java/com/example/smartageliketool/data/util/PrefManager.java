@@ -7,13 +7,9 @@ import com.google.gson.Gson;
 
 public class PrefManager {
     private SharedPreferences prefs;
-    private Gson gson;
-
 
     public PrefManager(SharedPreferences prefs) {
         this.prefs = prefs;
-        gson = new Gson();
-
     }
 //***************************************************************************************************
 
@@ -80,6 +76,4 @@ public class PrefManager {
     }
 
     //***************************************************************************************************
-
-
 }
