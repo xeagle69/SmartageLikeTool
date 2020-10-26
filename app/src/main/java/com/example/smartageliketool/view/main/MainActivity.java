@@ -55,6 +55,7 @@ import com.example.smartageliketool.data.sqlite.DatabaseModule;
 import com.example.smartageliketool.data.util.PrefManager;
 import com.example.smartageliketool.data.util.RemoteConstants;
 import com.example.smartageliketool.di.views.main.MainActivityModule;
+import com.example.smartageliketool.util.SmsAlarmReceiver;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -96,6 +97,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     private CountDownTimer webViewCountDownTimer = null;
     private Date currentTime;
     private Date startTime;
+    private SmsAlarmReceiver smsAlarmReceiver;
 
     private boolean ifChangeIpStarted = false;
 
@@ -156,7 +158,9 @@ public class MainActivity extends BaseActivity implements MainContract.View {
             presenter.getToken("super-admin", "a8k9p763gYv2RBq");
             checkSystemStability();
 
-//            sendSms();
+
+            smsAlarmReceiver = new SmsAlarmReceiver();
+            startAlarmManager();
 
 
         } else {
@@ -283,12 +287,26 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     @SuppressLint("LongLogTag")
     @Override
     public void getCookieFailed(Throwable error) {
-        Toast.makeText(MainActivity.this, "Cookie NOT Received !!!", Toast.LENGTH_LONG).show();
-        Log.d(TAG, "Cookie NOT Received");
-        txtActivityLabel.setText("Cookie NOT Received");
-        if (isNetworkAvailable()) {
-            getCookie("getCookieFailed");
+
+
+        if (error instanceof HttpException) {
+            if (((HttpException) error).code() == 401) {
+                Log.d(TAG, "token expired");
+                presenter.getToken("super-admin", "a8k9p763gYv2RBq"
+                );
+            } else {
+                Toast.makeText(MainActivity.this, "Cookie NOT Received !!!", Toast.LENGTH_LONG).show();
+                Log.d(TAG, "Cookie NOT Received");
+                txtActivityLabel.setText("Cookie NOT Received");
+                if (isNetworkAvailable()) {
+                    getCookie("getCookieFailed");
+                }
+            }
+        } else {
+            txtActivityLabel.setText("Cookie is over");
         }
+
+
     }
 
 
@@ -314,6 +332,18 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     @Override
     public void updateCookieFailed(Throwable error) {
 
+    }
+
+    @Override
+    public void deleteCookieSuccess(Integer cookieId, String url) {
+        // TODO:   deleteCookieSuccess
+        getCookie("checkAccountStatus");
+    }
+
+    @Override
+    public void deleteCookieFailed(Throwable error) {
+        // TODO:   deleteCookieFailed
+        getCookie("checkAccountStatus");
     }
 
     private void incrementCount() {
@@ -364,13 +394,26 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
     @Override
     public void deActivePostSuccess(PostDataBaseEntity post) {
-        likeMainFunction(getPostForCookie(publicLastCookie.getId()));
+        System.out.println("Deactivation success");
+        PostDataBaseEntity postDataBaseEntity = getPostForCookie(publicLastCookie.getId());
+        if (postDataBaseEntity == null) {
+            getCookie("DeActivePost Success");
+        } else {
+            likeMainFunction(postDataBaseEntity);
+        }
+
+
     }
 
     @Override
     public void deActivePostFailed(PostDataBaseEntity post, Throwable error) {
         System.out.println("Deactivation failed");
-        likeMainFunction(getPostForCookie(publicLastCookie.getId()));
+        PostDataBaseEntity postDataBaseEntity = getPostForCookie(publicLastCookie.getId());
+        if (postDataBaseEntity == null) {
+            getCookie("Deactivation failed");
+        } else {
+            likeMainFunction(postDataBaseEntity);
+        }
     }
 
     @Override
@@ -669,8 +712,28 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                             if (isNetworkAvailable()) {
                                 if (user_status == UserAccountStatus.OK) {
                                     user_status = UserAccountStatus.PAUSED_BY_LOGIN_NEEDED;
-                                    getCookie("checkAccountStatus");
+
+
+
+                                    StringBuilder urlStringBuilder = new StringBuilder();
+                                    urlStringBuilder.append(RemoteConstants.API_BASE);
+                                    urlStringBuilder.append("valid_cookies/");
+                                    urlStringBuilder.append(publicLastCookie.getId());
+
+
                                     cookieGetCount--;
+
+
+
+                                    presenter.deleteCookie(urlStringBuilder.toString(),prefManager.loadToken());
+
+
+
+
+
+
+
+
                                 }
                             }
 
@@ -842,8 +905,32 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                 DatabaseModule databaseModule = DatabaseModule.getInstance(MainActivity.this);
                 databaseModule.postTableDao().deletePost(postDataBaseEntity);
                 presenter.deActivePost(postDataBaseEntity, prefManager.loadToken(), RemoteConstants.API_BASE + "cookie_posts/" + postDataBaseEntity.getActualId());
+            } else if (((HttpException) error).code() == 500) {
+//                presenter.getPostListFromBetween(prefManager.loadToken());
+                // TODO:  handle 500 internal error
+                Log.d(TAG, "inValidPost - >  Instagram Response Code 500");
+
+                new CountDownTimer(180000, 1000) {
+
+                    @Override
+                    public void onTick(long millisUntilFinished) {
+                        Log.d(TAG, "inValidPost - >  Instagram Response Code 500 timer :"+millisUntilFinished);
+                        if (millisUntilFinished > 56000 && millisUntilFinished < 59000) {
+                            webViewCountDownTimer.cancel();
+                        }
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        Log.d(TAG, "inValidPost - >  Instagram Response Code 500 finished");
+                        webViewCountDownTimer.start();
+                        presenter.getPostListFromBetween(prefManager.loadToken());
+                    }
+                };
+
+
             }
-        getCookie("inValidPost");
+
     }
 
     @SuppressLint("LongLogTag")
@@ -1092,25 +1179,16 @@ public class MainActivity extends BaseActivity implements MainContract.View {
     //**********************************************************************************************
     //send sms start
 
-    private void sendSms() {
+    private void startAlarmManager() {
         if (
                 (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED)
                         ||
                         (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED)
         ) {
-            try {
-                SmsManager smsMgrVar = SmsManager.getDefault();
-                smsMgrVar.sendTextMessage("8080", null, "0", null, null);
-                Toast.makeText(getApplicationContext(), "Sms Sent",
-                        Toast.LENGTH_LONG).show();
-            } catch (Exception ErrVar) {
-                Toast.makeText(getApplicationContext(), ErrVar.getMessage().toString(),
-                        Toast.LENGTH_LONG).show();
-                ErrVar.printStackTrace();
-            }
+            smsAlarmReceiver.setAlarm(MainActivity.this);
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                requestPermissions(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS}, 10);
+                requestPermissions(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_PHONE_STATE}, 10);
             }
         }
 
@@ -1123,10 +1201,10 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
             if (permissions[0].equals(Manifest.permission.SEND_SMS)) {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    sendSms();
+                    smsAlarmReceiver.setAlarm(MainActivity.this);
                 } else {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        requestPermissions(new String[]{Manifest.permission.SEND_SMS}, 10);
+                        requestPermissions(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_PHONE_STATE}, 10);
                     }
                 }
             }
@@ -1137,6 +1215,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
 
     private final BroadcastReceiver smsBroadcastReceiver = new BroadcastReceiver() {
 
+        @SuppressLint("LongLogTag")
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(SMS_RECEIVED)) {
@@ -1163,22 +1242,53 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                     int indexAmount = 0;
                     boolean isInternetMessage = false;
                     for (int i = 0; i < messageArray.length; i++) {
-                        if (messageArray[i].equals("مگابایت")) {
-                            indexAmount = (i - 1);
+                        if ((messageArray[i].equals("برابر")) && (messageArray[i + 1].equals("با")) && (messageArray[i + 3].equals("مگابایت"))) {
+                            indexAmount = (i + 2);
                             isInternetMessage = true;
+                            break;
                         }
                     }
 
                     if (isInternetMessage) {
-                        new AlertDialog.Builder(MainActivity.this)
-                                .setTitle(sender)
-                                .setMessage(messageArray[indexAmount] + " Mb")
-                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
 
-                                    }
-                                })
-                                .show();
+
+                        try {
+                            int currentMb = Integer.parseInt(messageArray[indexAmount]);
+                            Log.d(TAG, "onReceive SMS result in MB: " + currentMb);
+                            if (currentMb < 1000) {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle(sender)
+                                        .setMessage(messageArray[indexAmount] + " Mb")
+                                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+
+                                            }
+                                        })
+                                        .show();
+
+                                //send sms to yaser
+
+//                                TelephonyManager tMgr = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+//                                @SuppressLint("MissingPermission")
+//                                String mPhoneNumber = tMgr.getLine1Number();
+//                                Log.d(TAG, "onReceive SMS result Current Phone Number :"+mPhoneNumber);
+
+                                try {
+                                    SmsManager smsMgrVar = SmsManager.getDefault();
+                                    String smsMessage = " Need Charge , its current internet is : " + currentMb + " MB";
+                                    smsMgrVar.sendTextMessage("+989123874162", null, smsMessage, null, null);
+                                } catch (Exception ErrVar) {
+                                    ErrVar.printStackTrace();
+                                }
+
+
+                            }
+
+                        } catch (Exception e) {
+
+                        }
+
+
                     }
 
 

@@ -70,6 +70,11 @@ public class DataRepositoryImpl implements DataRepository {
         return apiManager.updateCookie(url,token,updateCookieDto);
     }
 
+    @Override
+    public Single<GetCookieResponse> deleteCookie(String url, String token) {
+        return apiManager.deleteCookie(url,token);
+    }
+
 
     @Override
     public Single<LikeResponseDto> like(String url, Map<String, String> headers) {

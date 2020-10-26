@@ -49,6 +49,10 @@ public class ApiManager {
         return apiService.updateCookie(url, token, updateCookieDto);
     }
 
+    public Single<GetCookieResponse> deleteCookie(String url, String token) {
+        return apiService.deleteCookie(url, token);
+    }
+
     public Single<InstaPostResponse> testPost(String url, Map<String, String> headers) {
         return apiService.testPost(url, headers);
     }

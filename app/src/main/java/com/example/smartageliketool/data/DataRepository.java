@@ -33,6 +33,8 @@ public interface DataRepository {
 
     Single<GetCookieResponse> updateCookie( String url, String token, UpdateCookieDto updateCookieDto);
 
+    Single<GetCookieResponse> deleteCookie( String url, String token);
+
     Single<LikeResponseDto> like(String url, Map<String, String> headers);
 
 }

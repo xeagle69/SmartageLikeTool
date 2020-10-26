@@ -1,8 +1,6 @@
 package com.example.smartageliketool.data.remote;
 
 
-
-
 import com.example.smartageliketool.data.model.cookie.GetCookieResponse;
 import com.example.smartageliketool.data.model.instapost.InstaPostResponse;
 import com.example.smartageliketool.data.model.like.LikeResponseDto;
@@ -42,10 +40,12 @@ public interface NetworkApiService {
     @GET(RemoteConstants.GET_COOKIE)
     Single<GetCookieResponse> getCookie(@Header("Authorization") String token);
 
+    @HTTP(method = "DELETE")
+    Single<GetCookieResponse> deleteCookie(@Url String url, @Header("Authorization") String token);
+
 
     @HTTP(method = "PUT", hasBody = true)
-    Single<GetCookieResponse> updateCookie(@Url String url,@Header("Authorization") String token, @Body UpdateCookieDto updateCookieDto);
-
+    Single<GetCookieResponse> updateCookie(@Url String url, @Header("Authorization") String token, @Body UpdateCookieDto updateCookieDto);
 
 
     @GET

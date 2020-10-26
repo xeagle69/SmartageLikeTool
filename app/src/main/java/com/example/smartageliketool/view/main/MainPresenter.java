@@ -4,7 +4,6 @@ package com.example.smartageliketool.view.main;
 import android.util.Log;
 
 import com.example.smartageliketool.data.DataRepository;
-import com.example.smartageliketool.data.model.like.LikeResponseDto;
 import com.example.smartageliketool.data.model.post.PostDataBaseEntity;
 import com.example.smartageliketool.data.model.updateCookie.UpdateCookieDto;
 import com.example.smartageliketool.di.scope.PerActivity;
@@ -87,10 +86,22 @@ public class MainPresenter implements MainContract.Presenter {
 
     @Override
     public void updateCookie(String url, String token, UpdateCookieDto updateCookieDto) {
-        compositeDisposable.add(repository.updateCookie(url,token,updateCookieDto)
+        compositeDisposable.add(repository.updateCookie(url, token, updateCookieDto)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(GetCookieResponse -> view.updateCookieSuccess(url,updateCookieDto), error -> view.updateCookieFailed(error)
+                .subscribe(GetCookieResponse -> view.updateCookieSuccess(url, updateCookieDto), error -> view.updateCookieFailed(error)
+                ));
+    }
+
+    @Override
+    public void deleteCookie(String url, String token) {
+        Integer deleteCookieIndex = Integer.parseInt(url.substring(url.lastIndexOf('/')+1, url.length()));
+
+
+        compositeDisposable.add(repository.deleteCookie(url, token)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(GetCookieResponse -> view.deleteCookieSuccess(deleteCookieIndex, url), error -> view.deleteCookieFailed(error)
                 ));
     }
 
@@ -98,7 +109,7 @@ public class MainPresenter implements MainContract.Presenter {
     @Override
     public void testPostValidity(PostDataBaseEntity postDataBaseEntity, String url, Map<String, String> headers) {
         String completeUrl = url + "?__a=1";
-        Log.d(TAG, "testPostValidity > URL : "+completeUrl);
+        Log.d(TAG, "testPostValidity > URL : " + completeUrl);
         compositeDisposable.add(repository.testPost(completeUrl, headers)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -133,7 +144,7 @@ public class MainPresenter implements MainContract.Presenter {
         compositeDisposable.add(repository.like(url, headerCookies)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(LikeResponsDto -> view.likeApiProcessIsSuccess(LikeResponsDto,post), error -> view.likeApiProcessIsFailed(post, error)
+                .subscribe(LikeResponsDto -> view.likeApiProcessIsSuccess(LikeResponsDto, post), error -> view.likeApiProcessIsFailed(post, error)
                 ));
 
     }

@@ -34,6 +34,11 @@ public interface MainContract {
 
         void updateCookieFailed(Throwable error);
 
+
+        void deleteCookieSuccess(Integer cookieId,String url);
+
+        void deleteCookieFailed(Throwable error);
+
         void changeIp();
 
         void validPost(PostDataBaseEntity postDataBaseEntity, InstaPostResponse instaPostResponse);
@@ -75,6 +80,8 @@ public interface MainContract {
         void getCookie(String token);
 
         void updateCookie(String url, String token, UpdateCookieDto updateCookieDto);
+
+        void deleteCookie(String url, String token);
 
         void testPostValidity(PostDataBaseEntity postDataBaseEntity, String url, Map<String, String> headers);
 
