@@ -23,6 +23,7 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebResourceRequest;
@@ -141,6 +142,8 @@ public class MainActivity extends BaseActivity implements MainContract.View {
         IntentFilter filter = new IntentFilter(SMS_RECEIVED);
         this.registerReceiver(smsBroadcastReceiver, filter);
         ButterKnife.bind(this);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         if (RemoteConstants.isRootGiven()) {
             Toast.makeText(MainActivity.this, "it is Root !!!", Toast.LENGTH_LONG).show();
             //load dagger
@@ -915,7 +918,7 @@ public class MainActivity extends BaseActivity implements MainContract.View {
                     @Override
                     public void onTick(long millisUntilFinished) {
                         Log.d(TAG, "inValidPost - >  Instagram Response Code 500 timer :"+millisUntilFinished);
-                        if (millisUntilFinished > 56000 && millisUntilFinished < 59000) {
+                        if (millisUntilFinished > 176000 && millisUntilFinished < 179000) {
                             webViewCountDownTimer.cancel();
                         }
                     }
